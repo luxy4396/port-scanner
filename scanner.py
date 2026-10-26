@@ -4,37 +4,91 @@ import socket
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 COMMON_PORTS = {
-    21: "FTP — 文件传输协议，明文传账号密码，现已少用",
-    22: "SSH — 加密远程登录，管理 Linux 服务器的标准方式",
-    23: "Telnet — 老式远程登录，全程明文，已基本被 SSH 取代",
-    25: "SMTP — 发送邮件",
+    # —— 基础与网络服务 ——
     53: "DNS — 域名解析",
-    80: "HTTP — 网页服务，明文传输",
-    110: "POP3 — 接收邮件（明文）",
-    135: "RPC — Windows 远程过程调用的端点映射服务",
-    139: "NetBIOS — Windows 文件共享相关的会话服务",
-    143: "IMAP — 接收并在服务器上管理邮件",
+    69: "TFTP — 简单文件传输，常用于网络设备传固件/配置（通常走 UDP）",
+    88: "Kerberos — 域环境里的统一身份认证",
+    111: "RPCBind — RPC 服务的端口登记处，NFS 就靠它",
+    123: "NTP — 网络对时（通常走 UDP）",
+    161: "SNMP — 网络设备监控管理，弱口令/团体字是经典问题（通常走 UDP）",
     389: "LDAP — 目录服务，域环境里用来查账号和组织信息",
+    636: "LDAPS — 加密的 LDAP",
+    # —— 网页与代理 ——
+    80: "HTTP — 网页服务，明文传输",
     443: "HTTPS — 加密的网页服务",
-    445: "SMB — Windows 文件共享，永恒之蓝等高危漏洞就出在这里",
-    465: "SMTPS — 加密发送邮件",
-    993: "IMAPS — 加密接收邮件",
-    995: "POP3S — 加密接收邮件",
     1080: "SOCKS — 通用代理协议的常用端口",
-    1433: "SQL Server — 微软的数据库服务",
-    1521: "Oracle — Oracle 数据库的监听端口",
-    2375: "Docker API — 未授权访问可直接控制容器和主机，高危",
-    3306: "MySQL — 最常见的开源数据库之一",
-    3389: "RDP — Windows 远程桌面，常被口令爆破盯上",
-    5432: "PostgreSQL — 开源数据库",
-    5900: "VNC — 图形化远程桌面",
-    6379: "Redis — 内存数据库/缓存，未授权访问是经典入侵入口",
+    3128: "Squid — 代理服务器的默认端口",
     8000: "HTTP 备用 — 开发调试和临时 Web 服务常用",
+    8009: "AJP — Tomcat 的连接器协议，Ghostcat 漏洞就出在这里",
     8080: "HTTP 备用/代理 — Web 备用端口或代理服务常用",
     8443: "HTTPS 备用 — 备用的加密网页服务",
+    8888: "HTTP 备用 — Jupyter、宝塔等面板和开发服务常用",
+    # —— 邮件 ——
+    25: "SMTP — 发送邮件",
+    110: "POP3 — 接收邮件（明文）",
+    143: "IMAP — 接收并在服务器上管理邮件",
+    465: "SMTPS — 加密发送邮件",
+    587: "SMTP 提交 — 客户端投递邮件的专用端口",
+    993: "IMAPS — 加密接收邮件",
+    995: "POP3S — 加密接收邮件",
+    # —— 文件传输与共享 ——
+    21: "FTP — 文件传输协议，明文传账号密码，现已少用",
+    873: "Rsync — 文件同步服务，未授权访问可直接读写文件",
+    2049: "NFS — 类 Unix 的网络文件共享",
+    # —— 远程访问与管理 ——
+    22: "SSH — 加密远程登录，管理 Linux 服务器的标准方式",
+    23: "Telnet — 老式远程登录，全程明文，已基本被 SSH 取代",
+    135: "RPC — Windows 远程过程调用的端点映射服务",
+    139: "NetBIOS — Windows 文件共享相关的会话服务",
+    445: "SMB — Windows 文件共享，永恒之蓝等高危漏洞就出在这里",
+    902: "VMware — 虚拟机的认证/远程控制台服务",
+    912: "VMware — vmware-authd 相关的远程控制台端口",
+    2323: "Telnet 备用 — 物联网设备上常见，Mirai 僵尸网络的主攻端口之一",
+    3389: "RDP — Windows 远程桌面，常被口令爆破盯上",
+    5900: "VNC — 图形化远程桌面",
+    5985: "WinRM — Windows 远程管理（HTTP），也是横向移动的常用通道",
+    5986: "WinRM — Windows 远程管理（HTTPS）",
+    10000: "Webmin — Linux 的网页管理面板",
+    # —— 数据库与缓存 ——
+    1433: "SQL Server — 微软的数据库服务",
+    1521: "Oracle — Oracle 数据库的监听端口",
+    3306: "MySQL — 最常见的开源数据库之一",
+    33060: "MySQL X — MySQL 8 的新协议端口，看到它基本就是 MySQL 8",
+    5432: "PostgreSQL — 开源数据库",
+    5601: "Kibana — Elasticsearch 的可视化面板，常和 9200 成对出现",
+    6379: "Redis — 内存数据库/缓存，未授权访问是经典入侵入口",
+    9042: "Cassandra — 分布式 NoSQL 数据库",
     9200: "Elasticsearch — 搜索服务，未授权访问曾造成大量数据泄露",
     11211: "Memcached — 内存缓存服务",
     27017: "MongoDB — 文档型数据库",
+    # —— Windows 局域网常见（多为系统自带服务） ——
+    5040: "CDP — Windows 连接设备平台服务（手机连接等功能用）",
+    5357: "WSD — Windows 的网络设备发现服务",
+    7680: "WUDO — Windows 更新传递优化，局域网内互传更新包",
+    # —— 物联网与工控 ——
+    102: "S7 — 西门子 PLC 的工控协议端口",
+    502: "Modbus — 工业控制的经典协议，本身没有认证和加密",
+    1883: "MQTT — 物联网消息协议，明文传输",
+    8883: "MQTT/TLS — 加密版的 MQTT",
+    5555: "ADB — 安卓调试桥，开放着等于把设备调试权限交了出去",
+    # —— 开发、运维与虚拟化 ——
+    2375: "Docker API — 未授权访问可直接控制容器和主机，高危",
+    2376: "Docker API/TLS — 加密版的 Docker 远程接口",
+    2379: "etcd — Kubernetes 的核心数据存储，存着集群的全部配置",
+    4444: "渗透监听 — 渗透测试工具常用的默认监听端口（实验环境里常见）",
+    5000: "开发服务 — Flask 开发服务器、Docker 镜像仓库等常用",
+    5672: "AMQP — RabbitMQ 等消息队列的协议端口",
+    6443: "Kubernetes API — 集群的控制入口",
+    7001: "WebLogic — Oracle 中间件控制台，历史高危漏洞多",
+    9000: "PHP-FPM — PHP 的进程管理器端口，也见于一些服务的管理接口",
+    9090: "管理面板 — Prometheus、Cockpit 等常用",
+    15672: "RabbitMQ 管理 — 消息队列的网页管理台",
+    # —— 其他 ——
+    631: "IPP — 网络打印服务",
+    1194: "OpenVPN — 常见的 VPN 服务端口",
+    1723: "PPTP — 老式 VPN 协议，已不推荐",
+    9100: "JetDirect — 网络打印机的原始打印端口",
+    25565: "Minecraft — 游戏服务器的默认端口",
 }
 def check_port(ip, port, timeout=1):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -158,13 +212,12 @@ def main():
         print(f"并发扫描（{args.workers} 线程）: {con_time:.3f} 秒，开放端口: {con_result if con_result else '无'}")
 
         if seq_result == con_result:
-            print("两次结果一致 ✓")
+            print("两次结果一致")
         if con_time > 0 and seq_time > con_time:
             print(f"并发提速约 {seq_time / con_time:.1f} 倍")
         elif con_time > 0:
-            print("这次并发没有更快：目标响应太快时（比如本机 127.0.0.1，关闭端口立刻拒绝），"
-                  "单次连接几乎不等待，线程创建和调度的开销反而占了大头。"
-                  "扫响应慢或有端口被防火墙丢弃的目标时，并发才会明显提速。")
+            print("这次并发没有更快,"
+                  "单次连接几乎不等待，线程创建和调度的开销反而占了大头。")
         return
 
     mode = "单线程" if args.sequential else f"{args.workers} 线程并发"
